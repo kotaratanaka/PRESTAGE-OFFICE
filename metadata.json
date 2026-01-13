@@ -1,0 +1,8 @@
+{
+  "name": "PrestageOffice AI",
+  "description": "日本向けのリノベーション・建設管理プラットフォーム。Gemini 3 Proおよび2.5 Flashを活用した画像生成・編集機能を搭載。",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
