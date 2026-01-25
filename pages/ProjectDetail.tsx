@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ProjectStatus, CostCategory, EstimateItem } from '../types';
-import { ArrowLeft, Box, LayoutTemplate, Calculator, CheckCircle2, ChevronRight, Download, Users, RefreshCw, Camera, XCircle, Aperture, ScanLine } from 'lucide-react';
+import { ArrowLeft, Box, LayoutTemplate, Calculator, CheckCircle2, ChevronRight, Download, Users, RefreshCw, Camera, XCircle, Aperture, ScanLine, FileText, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +12,9 @@ const ProjectDetail: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+
+  // Accordion state for estimates
+  const [expandedEstimateIds, setExpandedEstimateIds] = useState<Record<string, boolean>>({});
 
   // Mock data
   const project = {
@@ -30,8 +33,25 @@ const ProjectDetail: React.FC = () => {
       category: CostCategory.Electrical,
       aiEstimate: 450000,
       vendorQuotes: [
-        { vendorName: '株式会社エレテック', amount: 480000, selected: true },
-        { vendorName: '渋谷電気工事', amount: 520000, selected: false },
+        { 
+          vendorName: '株式会社エレテック', 
+          amount: 480000, 
+          selected: true,
+          isSubmitted: true,
+          submissionDate: '2023/10/26',
+          fileName: 'estimate_eletech_v2.pdf',
+          details: [
+             { name: '配線工事一式', amount: 250000 },
+             { name: 'スイッチ・コンセント器具', amount: 150000 },
+             { name: '諸経費', amount: 80000 }
+          ]
+        },
+        { 
+          vendorName: '渋谷電気工事', 
+          amount: 0, 
+          selected: false,
+          isSubmitted: false // 未提出
+        },
       ]
     },
     {
@@ -39,7 +59,19 @@ const ProjectDetail: React.FC = () => {
       category: CostCategory.HVAC,
       aiEstimate: 800000,
       vendorQuotes: [
-        { vendorName: 'ビル管理空調サービス', amount: 750000, selected: true },
+        { 
+          vendorName: 'ビル管理空調サービス', 
+          amount: 750000, 
+          selected: true,
+          isSubmitted: true,
+          submissionDate: '2023/10/27',
+          fileName: 'estimate_hvac.pdf',
+          details: [
+             { name: '業務用エアコン本体', amount: 450000 },
+             { name: '設置工事費', amount: 200000 },
+             { name: '配管部材', amount: 100000 }
+          ]
+        },
       ]
     },
     {
@@ -47,8 +79,25 @@ const ProjectDetail: React.FC = () => {
       category: CostCategory.Partition,
       aiEstimate: 1200000,
       vendorQuotes: [
-        { vendorName: 'コマニー代理店', amount: 1150000, selected: false },
-        { vendorName: 'オカムラ施工', amount: 1250000, selected: true },
+        { 
+           vendorName: 'コマニー代理店', 
+           amount: 0, 
+           selected: false,
+           isSubmitted: false
+        },
+        { 
+           vendorName: 'オカムラ施工', 
+           amount: 1250000, 
+           selected: true,
+           isSubmitted: true,
+           submissionDate: '2023/10/25',
+           fileName: 'okamura_partition.pdf',
+           details: [
+              { name: 'ガラスパーティション', amount: 800000 },
+              { name: '施工費（夜間）', amount: 350000 },
+              { name: '運搬費', amount: 100000 }
+           ]
+        },
       ]
     },
      {
@@ -60,8 +109,9 @@ const ProjectDetail: React.FC = () => {
   ];
 
   const totalAiEstimate = estimates.reduce((sum, item) => sum + item.aiEstimate, 0);
+  // 選択済み かつ 提出済み の合計
   const totalSelectedQuote = estimates.reduce((sum, item) => {
-    const selected = item.vendorQuotes.find(q => q.selected);
+    const selected = item.vendorQuotes.find(q => q.selected && q.isSubmitted);
     return sum + (selected ? selected.amount : 0);
   }, 0);
 
@@ -86,6 +136,13 @@ const ProjectDetail: React.FC = () => {
 
   const startScan = () => {
     setIsScanning(true);
+  };
+
+  const toggleDetails = (quoteId: string) => {
+     setExpandedEstimateIds(prev => ({
+        ...prev,
+        [quoteId]: !prev[quoteId]
+     }));
   };
 
   return (
@@ -311,9 +368,9 @@ const ProjectDetail: React.FC = () => {
 
         {/* Tab 3: Estimates & Vendors */}
         {activeTab === 'estimate' && (
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 flex-none">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                   <p className="text-sm text-gray-500 mb-1">AI 概算総額</p>
                   <p className="text-3xl font-bold text-gray-400">¥{totalAiEstimate.toLocaleString()}</p>
@@ -338,7 +395,7 @@ const ProjectDetail: React.FC = () => {
             </div>
 
             {/* Estimates Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                   <h3 className="font-bold text-gray-800 flex items-center">
                      <Users className="w-5 h-5 mr-2 text-gray-500" />
@@ -349,19 +406,19 @@ const ProjectDetail: React.FC = () => {
                   </button>
                </div>
                
-               <div className="overflow-auto">
+               <div className="overflow-x-auto">
                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0">
+                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                        <tr>
-                          <th className="px-6 py-4 font-medium border-b border-gray-200 w-1/5">工事区分</th>
-                          <th className="px-6 py-4 font-medium border-b border-gray-200 w-1/5 bg-gray-50/50">AI 簡易算出額</th>
-                          <th className="px-6 py-4 font-medium border-b border-gray-200 w-2/5">業者見積もり (選択)</th>
-                          <th className="px-6 py-4 font-medium border-b border-gray-200 w-1/5 text-right">アクション</th>
+                          <th className="px-6 py-4 font-medium border-b border-gray-200 w-1/6">工事区分</th>
+                          <th className="px-6 py-4 font-medium border-b border-gray-200 w-1/6 bg-gray-50/50">AI 簡易算出額</th>
+                          <th className="px-6 py-4 font-medium border-b border-gray-200 w-1/2">業者見積もり比較</th>
+                          <th className="px-6 py-4 font-medium border-b border-gray-200 w-1/6 text-right">連絡</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                        {estimates.map((item) => (
-                          <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={item.id} className="hover:bg-gray-50 transition-colors align-top">
                              <td className="px-6 py-4">
                                 <span className="font-bold text-gray-800">{item.category}</span>
                              </td>
@@ -370,22 +427,80 @@ const ProjectDetail: React.FC = () => {
                              </td>
                              <td className="px-6 py-4">
                                 {item.vendorQuotes.length > 0 ? (
-                                   <div className="space-y-2">
-                                      {item.vendorQuotes.map((quote, idx) => (
-                                         <div 
-                                           key={idx} 
-                                           className={`flex items-center justify-between p-2 rounded-lg border ${quote.selected ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200' : 'bg-white border-gray-200 border-dashed opacity-70'}`}
-                                         >
-                                            <div className="flex items-center">
-                                               {quote.selected && <CheckCircle2 className="w-4 h-4 text-blue-600 mr-2" />}
-                                               <span className={`text-sm ${quote.selected ? 'font-bold text-gray-800' : 'text-gray-600'}`}>{quote.vendorName}</span>
+                                   <div className="space-y-4">
+                                      {item.vendorQuotes.map((quote, idx) => {
+                                         const uniqueId = `${item.id}-${idx}`;
+                                         return (
+                                            <div 
+                                               key={uniqueId} 
+                                               className={`rounded-lg border transition-all ${quote.selected ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200' : 'bg-white border-gray-200'}`}
+                                            >
+                                               {/* Main Quote Row */}
+                                               <div className="flex items-center justify-between p-3">
+                                                  <div className="flex items-center space-x-3">
+                                                     {quote.selected ? (
+                                                        <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                                                     ) : (
+                                                        <div className="w-5 h-5 rounded-full border border-gray-300"></div>
+                                                     )}
+                                                     <div>
+                                                        <p className={`text-sm ${quote.selected ? 'font-bold text-gray-800' : 'text-gray-600'}`}>{quote.vendorName}</p>
+                                                        {quote.isSubmitted ? (
+                                                           <p className="text-xs text-green-600 flex items-center mt-0.5">
+                                                              <FileText className="w-3 h-3 mr-1" />
+                                                              {quote.fileName || '見積書.pdf'} ({quote.submissionDate})
+                                                           </p>
+                                                        ) : (
+                                                           <p className="text-xs text-orange-500 flex items-center mt-0.5">
+                                                              <AlertCircle className="w-3 h-3 mr-1" />
+                                                              見積書待ち
+                                                           </p>
+                                                        )}
+                                                     </div>
+                                                  </div>
+                                                  
+                                                  <div className="flex items-center space-x-4">
+                                                     {quote.isSubmitted ? (
+                                                        <div className="text-right">
+                                                            <p className="font-mono text-lg font-bold text-gray-800">¥{quote.amount.toLocaleString()}</p>
+                                                            <button 
+                                                               onClick={() => toggleDetails(uniqueId)}
+                                                               className="text-xs text-blue-600 hover:underline flex items-center justify-end w-full"
+                                                            >
+                                                               内訳を見る
+                                                               {expandedEstimateIds[uniqueId] ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
+                                                            </button>
+                                                        </div>
+                                                     ) : (
+                                                        <span className="text-sm text-gray-400 bg-gray-100 px-3 py-1 rounded">未提出</span>
+                                                     )}
+                                                  </div>
+                                               </div>
+
+                                               {/* Expanded Details */}
+                                               {quote.isSubmitted && expandedEstimateIds[uniqueId] && quote.details && (
+                                                  <div className="border-t border-gray-200 bg-gray-50/50 p-3 animate-fadeIn">
+                                                     <p className="text-xs font-bold text-gray-500 mb-2">見積内訳</p>
+                                                     <ul className="space-y-1">
+                                                        {quote.details.map((detail, dIdx) => (
+                                                           <li key={dIdx} className="flex justify-between text-sm">
+                                                              <span className="text-gray-600">{detail.name}</span>
+                                                              <span className="font-mono text-gray-800">¥{detail.amount.toLocaleString()}</span>
+                                                           </li>
+                                                        ))}
+                                                        <li className="flex justify-between text-sm border-t border-gray-300 pt-1 mt-1 font-bold">
+                                                           <span>合計</span>
+                                                           <span>¥{quote.amount.toLocaleString()}</span>
+                                                        </li>
+                                                     </ul>
+                                                  </div>
+                                               )}
                                             </div>
-                                            <span className="font-mono text-sm">¥{quote.amount.toLocaleString()}</span>
-                                         </div>
-                                      ))}
+                                         );
+                                      })}
                                    </div>
                                 ) : (
-                                   <span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded">未提出</span>
+                                   <span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded">業者選定中</span>
                                 )}
                              </td>
                              <td className="px-6 py-4 text-right">
@@ -393,21 +508,8 @@ const ProjectDetail: React.FC = () => {
                                   to="/chat" 
                                   className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded transition-colors"
                                 >
-                                   連絡・調整
+                                   チャット
                                 </Link>
-                             </td>
-                          </tr>
-                       ))}
-                       {/* Mocking other categories */}
-                       {[CostCategory.FireSafety, CostCategory.Moving, CostCategory.Furniture].map((cat, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50 transition-colors opacity-60">
-                             <td className="px-6 py-4"><span className="font-bold text-gray-600">{cat}</span></td>
-                             <td className="px-6 py-4 bg-gray-50/30"><span className="text-gray-400">算出中...</span></td>
-                             <td className="px-6 py-4"><span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">見積依頼前</span></td>
-                             <td className="px-6 py-4 text-right">
-                                <button className="text-sm font-medium text-gray-400 cursor-not-allowed">
-                                   連絡・調整
-                                </button>
                              </td>
                           </tr>
                        ))}

@@ -38,16 +38,29 @@ export enum CostCategory {
   Moving = '引越し'
 }
 
-// 見積もりアイテム
+// 見積もりの内訳明細
+export interface QuoteDetailItem {
+  name: string; // 項目名（例：材料費）
+  amount: number; // 金額
+}
+
+// 業者ごとの見積もり情報
+export interface VendorQuote {
+  vendorName: string;
+  amount: number;
+  selected: boolean;
+  isSubmitted: boolean; // 見積書が提出されたかどうか
+  submissionDate?: string; // 提出日
+  fileName?: string; // 添付ファイル名
+  details?: QuoteDetailItem[]; // 内訳
+}
+
+// 見積もりアイテム（カテゴリーごとのまとめ）
 export interface EstimateItem {
   id: string;
   category: CostCategory;
   aiEstimate: number; // AIによる概算
-  vendorQuotes: {
-    vendorName: string;
-    amount: number;
-    selected: boolean;
-  }[];
+  vendorQuotes: VendorQuote[];
 }
 
 // チャットチャンネル
@@ -57,4 +70,6 @@ export interface ChatChannel {
   vendorName: string;
   lastMessage: string;
   unreadCount: number;
+  // チャット画面で参照するための見積り情報へのリンク
+  estimateId?: string;
 }
